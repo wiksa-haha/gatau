@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RFM Customer Segmentation – Treemap</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --champion:    #E8F5A3;
+    --hibernating: #A8D8CF;
+    --lost:        #89B8D4;
+    --potential:   #D9D9D9;
+    --loyal:       #F4957A;
+    --atrisk:      #BDD97A;
+    --newcust:     #F5C17A;
+    --attention:   #B6B0D6;
+    --promising:   #F5B8CC;
+    --sleep:       #C79BD6;
+    --cantlose:    #A8D4A2;
+  }
+
+  body {
+    background: #ffffff;
+    font-family: 'Plus Jakarta Sans', 'Outfit', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 40px 48px 32px;
+  }
+
+  header {
+    width: 100%;
+    max-width: 1200px;
+    margin-bottom: 28px;
+  }
+
+  h1 {
+    font-size: 26px;
+    font-weight: 800;
+    color: #1a1a2e;
+    letter-spacing: -0.5px;
+    text-align: center;
+  }
+
+  .subtitle {
+    font-size: 13px;
+    font-weight: 500;
+    color: #888;
+    text-align: center;
+    margin-top: 5px;
+    letter-spacing: 0.3px;
+  }
+
+  #treemap-container {
+    width: 100%;
+    max-width: 1200px;
+    position: relative;
+  }
+
+  #treemap {
+    width: 100%;
+    aspect-ratio: 16/9;
+    position: relative;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 32px rgba(0,0,0,0.07);
+  }
+
+  .tile {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    overflow: hidden;
+    transition: filter 0.2s ease, transform 0.15s ease;
+    opacity: 0;
+    transform: scale(0.96);
+    animation: fadeIn 0.45s ease forwards;
+    border: 2px solid #fff;
+  }
+
+  .tile:hover {
+    filter: brightness(0.93);
+    z-index: 10;
+    transform: scale(1.005);
+  }
+
+  .tile-label {
+    font-size: clamp(9px, 1.1vw, 15px);
+    font-weight: 700;
+    color: rgba(0,0,0,0.72);
+    text-align: center;
+    line-height: 1.3;
+    padding: 6px;
+    letter-spacing: -0.2px;
+    pointer-events: none;
+    user-select: none;
+  }
+
+  .tile-count {
+    font-size: clamp(8px, 0.9vw, 13px);
+    font-weight: 600;
+    color: rgba(0,0,0,0.5);
+    text-align: center;
+    pointer-events: none;
+    user-select: none;
+  }
+
+  .tile-pct {
+    font-size: clamp(7px, 0.8vw, 11px);
+    font-weight: 500;
+    color: rgba(0,0,0,0.4);
+    text-align: center;
+    margin-top: 2px;
+    pointer-events: none;
+    user-select: none;
+  }
+
+  @keyframes fadeIn {
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  /* Tooltip */
+  #tooltip {
+    position: fixed;
+    background: #1a1a2e;
+    color: #fff;
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    z-index: 100;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.18);
+    white-space: nowrap;
+  }
+
+  #tooltip span {
+    font-weight: 400;
+    color: rgba(255,255,255,0.65);
+    margin-left: 6px;
+  }
+
+  /* Legend */
+  .legend {
+    width: 100%;
+    max-width: 1200px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 20px;
+    margin-top: 20px;
+    justify-content: center;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #444;
+  }
+
+  .legend-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Customer Segment Distribution</h1>
+  <p class="subtitle">RFM Analysis · 5,942 Total Customers</p>
+</header>
+
+<div id="treemap-container">
+  <div id="treemap"></div>
+</div>
+
+<div class="legend" id="legend"></div>
+
+<div id="tooltip"></div>
+
+<script>
+const SEGMENTS = [
+  { name: "Champion",          count: 1130, color: "var(--champion)"   },
+  { name: "Hibernating",       count: 1140, color: "var(--hibernating)" },
+  { name: "Lost",              count: 645,  color: "var(--lost)"       },
+  { name: "Potential Loyalist",count: 654,  color: "var(--potential)"  },
+  { name: "Loyal Customer",    count: 628,  color: "var(--loyal)"      },
+  { name: "At Risk",           count: 536,  color: "var(--atrisk)"     },
+  { name: "New Customer",      count: 398,  color: "var(--newcust)"    },
+  { name: "Need Attention",    count: 323,  color: "var(--attention)"  },
+  { name: "Promising",         count: 199,  color: "var(--promising)"  },
+  { name: "About to Sleep",    count: 191,  color: "var(--sleep)"      },
+  { name: "Can't Lose Them",   count: 98,   color: "var(--cantlose)"   },
+];
+
+const TOTAL = SEGMENTS.reduce((s, d) => s + d.count, 0);
+
+// ── Squarified treemap ──────────────────────────────────────────────────────
+function squarify(data, x, y, w, h) {
+  if (!data.length) return [];
+  const totalArea = w * h;
+  const totalVal  = data.reduce((s, d) => s + d.value, 0);
+  const scale     = totalArea / totalVal;
+  const nodes     = data.map(d => ({ ...d, area: d.value * scale }));
+  const result    = [];
+  layoutRow(nodes, x, y, w, h, result);
+  return result;
+}
+
+function layoutRow(items, x, y, w, h, result) {
+  if (!items.length) return;
+  const row   = [];
+  let   rest  = items.slice();
+  let   best  = Infinity;
+
+  while (rest.length) {
+    const candidate = rest[0];
+    const next = [...row, candidate];
+    const ratio = worstRatio(next, Math.min(w, h));
+    if (row.length && ratio > best) break;
+    row.push(candidate);
+    rest = rest.slice(1);
+    best = ratio;
+  }
+
+  // Place row
+  const rowArea = row.reduce((s, d) => s + d.area, 0);
+  const rowLen  = Math.min(w, h);
+  const rowW    = rowArea / rowLen;
+  let   cursor  = w >= h ? y : x;
+
+  for (const item of row) {
+    const len = item.area / rowW;
+    if (w >= h) {
+      result.push({ ...item, x, y: cursor, w: rowW, h: len });
+      cursor += len;
+    } else {
+      result.push({ ...item, x: cursor, y, w: len, h: rowW });
+      cursor += len;
+    }
+  }
+
+  if (rest.length) {
+    if (w >= h) layoutRow(rest, x + rowW, y, w - rowW, h, result);
+    else        layoutRow(rest, x, y + rowW, w, h - rowW, result);
+  }
+}
+
+function worstRatio(row, sideLen) {
+  const rowArea = row.reduce((s, d) => s + d.area, 0);
+  let worst = 0;
+  for (const d of row) {
+    const l = d.area / rowArea * sideLen;
+    const r = Math.max(l / (d.area / l), (d.area / l) / l);
+    if (r > worst) worst = r;
+  }
+  return worst;
+}
+
+// ── Render ──────────────────────────────────────────────────────────────────
+function render() {
+  const container = document.getElementById('treemap');
+  const W = container.clientWidth;
+  const H = container.clientHeight;
+
+  const data = SEGMENTS
+    .sort((a, b) => b.count - a.count)
+    .map(d => ({ ...d, value: d.count }));
+
+  const nodes = squarify(data, 0, 0, W, H);
+
+  container.innerHTML = '';
+
+  nodes.forEach((node, i) => {
+    const tile = document.createElement('div');
+    tile.className = 'tile';
+    tile.style.cssText = `
+      left:   ${node.x}px;
+      top:    ${node.y}px;
+      width:  ${node.w}px;
+      height: ${node.h}px;
+      background: ${node.color};
+      animation-delay: ${i * 55}ms;
+    `;
+
+    const pct = ((node.count / TOTAL) * 100).toFixed(1);
+    const showDetail = node.w > 72 && node.h > 52;
+
+    tile.innerHTML = `
+      <div class="tile-label">${node.name}</div>
+      ${showDetail ? `<div class="tile-count">${node.count.toLocaleString()}</div>` : ''}
+      ${showDetail ? `<div class="tile-pct">${pct}%</div>` : ''}
+    `;
+
+    // Tooltip
+    tile.addEventListener('mousemove', (e) => {
+      const tt = document.getElementById('tooltip');
+      tt.innerHTML = `${node.name} <span>${node.count.toLocaleString()} customers · ${pct}%</span>`;
+      tt.style.opacity = '1';
+      tt.style.left = (e.clientX + 14) + 'px';
+      tt.style.top  = (e.clientY - 36) + 'px';
+    });
+    tile.addEventListener('mouseleave', () => {
+      document.getElementById('tooltip').style.opacity = '0';
+    });
+
+    container.appendChild(tile);
+  });
+}
+
+// ── Legend ──────────────────────────────────────────────────────────────────
+function buildLegend() {
+  const legend = document.getElementById('legend');
+  SEGMENTS.forEach(seg => {
+    const item = document.createElement('div');
+    item.className = 'legend-item';
+    item.innerHTML = `
+      <div class="legend-dot" style="background:${seg.color};border:1.5px solid rgba(0,0,0,0.08)"></div>
+      ${seg.name}
+    `;
+    legend.appendChild(item);
+  });
+}
+
+window.addEventListener('load', () => { render(); buildLegend(); });
+window.addEventListener('resize', render);
+</script>
+</body>
+</html>
