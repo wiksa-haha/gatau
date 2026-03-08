@@ -9,17 +9,17 @@
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root {
-    --champion:    #E8F5A3;
-    --hibernating: #A8D8CF;
-    --lost:        #89B8D4;
-    --potential:   #D9D9D9;
-    --loyal:       #F4957A;
-    --atrisk:      #BDD97A;
-    --newcust:     #F5C17A;
-    --attention:   #B6B0D6;
-    --promising:   #F5B8CC;
-    --sleep:       #C79BD6;
-    --cantlose:    #A8D4A2;
+    --champion:    #FFE033;
+    --hibernating: #2ECFB0;
+    --lost:        #4AABF7;
+    --potential:   #B0B8C8;
+    --loyal:       #FF6B4A;
+    --atrisk:      #8FD94A;
+    --newcust:     #FFB020;
+    --attention:   #9B8FE8;
+    --promising:   #FF7EB3;
+    --sleep:       #C44FD8;
+    --cantlose:    #3DD68C;
   }
 
   body {
@@ -87,9 +87,16 @@
   }
 
   .tile:hover {
-    filter: brightness(0.93);
+    filter: brightness(0.88);
     z-index: 10;
     transform: scale(1.005);
+  }
+
+  .tile:hover .tile-label,
+  .tile:hover .tile-count,
+  .tile:hover .tile-pct {
+    color: #ffffff !important;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.25);
   }
 
   .tile-label {
@@ -130,24 +137,41 @@
   /* Tooltip */
   #tooltip {
     position: fixed;
-    background: #1a1a2e;
-    color: #fff;
-    padding: 10px 16px;
-    border-radius: 8px;
+    background: #ffffff;
+    color: #1a1a2e;
+    padding: 10px 16px 10px 14px;
+    border-radius: 10px;
     font-size: 13px;
-    font-weight: 600;
+    font-weight: 700;
     pointer-events: none;
     opacity: 0;
     transition: opacity 0.15s ease;
     z-index: 100;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.18);
+    box-shadow: 0 6px 28px rgba(0,0,0,0.13), 0 1.5px 6px rgba(0,0,0,0.07);
     white-space: nowrap;
+    border-left: 5px solid #fff;
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
 
-  #tooltip span {
-    font-weight: 400;
-    color: rgba(255,255,255,0.65);
-    margin-left: 6px;
+  #tooltip .tt-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  #tooltip .tt-name {
+    font-weight: 700;
+    color: #1a1a2e;
+  }
+
+  #tooltip .tt-info {
+    font-weight: 500;
+    color: #666;
+    font-size: 12px;
+    margin-left: 2px;
   }
 
   /* Legend */
@@ -195,17 +219,17 @@
 
 <script>
 const SEGMENTS = [
-  { name: "Champion",          count: 1130, color: "var(--champion)"   },
-  { name: "Hibernating",       count: 1140, color: "var(--hibernating)" },
-  { name: "Lost",              count: 645,  color: "var(--lost)"       },
-  { name: "Potential Loyalist",count: 654,  color: "var(--potential)"  },
-  { name: "Loyal Customer",    count: 628,  color: "var(--loyal)"      },
-  { name: "At Risk",           count: 536,  color: "var(--atrisk)"     },
-  { name: "New Customer",      count: 398,  color: "var(--newcust)"    },
-  { name: "Need Attention",    count: 323,  color: "var(--attention)"  },
-  { name: "Promising",         count: 199,  color: "var(--promising)"  },
-  { name: "About to Sleep",    count: 191,  color: "var(--sleep)"      },
-  { name: "Can't Lose Them",   count: 98,   color: "var(--cantlose)"   },
+  { name: "Champion",          count: 1130, color: "#E8F5A3" },
+  { name: "Hibernating",       count: 1140, color: "#A8D8CF" },
+  { name: "Lost",              count: 645,  color: "#89B8D4" },
+  { name: "Potential Loyalist",count: 654,  color: "#D9D9D9" },
+  { name: "Loyal Customer",    count: 628,  color: "#F4957A" },
+  { name: "At Risk",           count: 536,  color: "#BDD97A" },
+  { name: "New Customer",      count: 398,  color: "#F5C17A" },
+  { name: "Need Attention",    count: 323,  color: "#B6B0D6" },
+  { name: "Promising",         count: 199,  color: "#F5B8CC" },
+  { name: "About to Sleep",    count: 191,  color: "#C79BD6" },
+  { name: "Can't Lose Them",   count: 98,   color: "#A8D4A2" },
 ];
 
 const TOTAL = SEGMENTS.reduce((s, d) => s + d.count, 0);
@@ -310,10 +334,15 @@ function render() {
     // Tooltip
     tile.addEventListener('mousemove', (e) => {
       const tt = document.getElementById('tooltip');
-      tt.innerHTML = `${node.name} <span>${node.count.toLocaleString()} customers · ${pct}%</span>`;
+      tt.innerHTML = `
+        <div class="tt-dot" style="background:${node.color};border:1.5px solid rgba(0,0,0,0.12)"></div>
+        <span class="tt-name">${node.name}</span>
+        <span class="tt-info">${node.count.toLocaleString()} customers · ${pct}%</span>
+      `;
+      tt.style.borderLeftColor = node.color;
       tt.style.opacity = '1';
       tt.style.left = (e.clientX + 14) + 'px';
-      tt.style.top  = (e.clientY - 36) + 'px';
+      tt.style.top  = (e.clientY - 46) + 'px';
     });
     tile.addEventListener('mouseleave', () => {
       document.getElementById('tooltip').style.opacity = '0';
